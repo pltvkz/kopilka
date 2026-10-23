@@ -1,765 +1,138 @@
 <!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Копилка — учёт финансов</title>
-    <!-- Подключение манифеста PWA -->
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#6c5ce7">
-    <link rel="apple-touch-icon" href="icon-192.png">
-
-    <style>
-        :root {
-            --bg: #f4f5f9;
-            --card: #ffffff;
-            --tx: #1b1d2a;
-            --mut: #7a7f94;
-            --ac: #6c5ce7;
-            --inc: #00a37a;
-            --exp: #e5484d;
-            --ln: #e6e8f0;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --bg: #12131c;
-                --card: #1e202e;
-                --tx: #f4f5f9;
-                --mut: #a0a5ba;
-                --ln: #2d3045;
-            }
-        }
-
-        body {
-            margin: 0;
-            background: var(--bg);
-            color: var(--tx);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            padding-bottom: 90px;
-        }
-
-        .w {
-            max-width: 520px;
-            margin: 0 auto;
-            padding: 16px;
-        }
-
-        h1 {
-            font-size: 24px;
-            margin: 0;
-        }
-
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 14px;
-        }
-
-        select, input, button {
-            font-family: inherit;
-            color: inherit;
-            border: 1px solid var(--ln);
-            border-radius: 8px;
-            padding: 8px;
-            background: var(--card);
-        }
-
-        .hero {
-            background: linear-gradient(135deg, var(--ac), #a29bfe);
-            color: white;
-            border-radius: 20px;
-            padding: 20px;
-            margin-bottom: 14px;
-        }
-
-        .hero small { opacity: .85; display: block; }
-        .hero b { font-size: 28px; }
-
-        .card-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px;
-            background: var(--card);
-            border-radius: 12px;
-            margin-bottom: 8px;
-        }
-
-        .icon-cell {
-            width: 40px;
-            height: 40px;
-            border-radius: 12px;
-            background: var(--bg);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 19px;
-            margin-right: 12px;
-        }
-
-        .income { color: var(--inc); font-weight: bold; }
-        .expense { color: var(--exp); font-weight: bold; }
-
-        nav {
-            position: fixed;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: var(--card);
-            border-top: 1px solid var(--ln);
-            display: flex;
-            justify-content: space-around;
-            padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px));
-            z-index: 5;
-        }
-
-        .tab-button {
-            flex: 1;
-            padding: 10px;
-            background: none;
-            border: none;
-            color: var(--mut);
-            font-size: 14px;
-            cursor: pointer;
-            font-weight: 600;
-        }
-
-        .tab-button.active {
-            color: var(--ac);
-        }
-
-        .fab {
-            position: fixed;
-            right: max(16px, calc(50% - 244px));
-            bottom: calc(74px + env(safe-area-inset-bottom, 0px));
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            background: var(--ac);
-            color: white;
-            font-size: 30px;
-            border: none;
-            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
-            cursor: pointer;
-            z-index: 6;
-        }
-
-        .mod {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.5);
-            display: none;
-            align-items: flex-end;
-            justify-content: center;
-            z-index: 10;
-        }
-
-        .sheet {
-            background: var(--bg);
-            width: 100%;
-            max-width: 520px;
-            border-radius: 22px 22px 0 0;
-            padding: 20px;
-            max-height: 85vh;
-            overflow-y: auto;
-            box-sizing: border-box;
-        }
-
-        .form-group {
-            margin-bottom: 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .save-button {
-            width: 100%;
-            padding: 14px;
-            background-color: var(--ac);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-weight: bold;
-            font-size: 16px;
-            cursor: pointer;
-            margin-top: 12px;
-        }
-
-        .empty-text {
-            text-align: center;
-            margin: 40px 0;
-            color: var(--mut);
-        }
-    </style>
-</head>
-<body>
-    <div class="w">
-        <header>
-            <h1>🐷 Копилка</h1>
-            <select id="cur" onchange="changeCurrency(this.value)">
-                <option value="₸">₸</option>
-                <option value="₽">₽</option>
-                <option value="$">$</option>
-                <option value="€">€</option>
-                <option value="Br">Br</option>
-            </select>
-        </header>
-
-        <div id="display-area"></div>
-    </div>
-
-    <button class="fab" onclick="openAdd()" title="Добавить">+</button>
-
-    <nav>
-        <button class="tab-button" id="tab-acc" onclick="setTab('acc')">Счета</button>
-        <button class="tab-button" id="tab-hist" onclick="setTab('hist')">История</button>
-    </nav>
-
-    <div class="mod" id="modal-overlay" onclick="closeModal(event)">
-        <div class="sheet" id="modal-content" onclick="event.stopPropagation()"></div>
-    </div>
-
-    <script>
-        let currentTab = 'acc';
-
-        let S = {
-            currency: "₸",
-            accounts: [
-                { id: "1", name: "Наличные", balance: 0, icon: "💵" },
-                { id: "2", name: "Карта", balance: 0, icon: "💳" }
-            ],
-            transactions: []
-        };
-
-        // Загрузка данных
-        try {
-            const savedData = localStorage.getItem("coinkeeper-data");
-            if (savedData) S = JSON.parse(savedData);
-        } catch (e) {
-            console.error("Ошибка загрузки:", e);
-        }
-
-        function saveData() {
-            localStorage.setItem("coinkeeper-data", JSON.stringify(S));
-        }
-
-        function formatCurrency(amount) {
-            return new Intl.NumberFormat("ru-RU").format(amount) + " " + S.currency;
-        }
-
-        function changeCurrency(val) {
-            S.currency = val;
-            saveData();
-            render();
-        }
-
-        function setTab(tab) {
-            currentTab = tab;
-            document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
-            document.getElementById(`tab-${tab}`)?.classList.add('active');
-            render();
-        }
-
-        function render() {
-            document.getElementById('cur').value = S.currency;
-            const area = document.getElementById("display-area");
-
-            if (currentTab === 'acc') {
-                const total = S.accounts.reduce((sum, acc) => sum + Number(acc.balance), 0);
-                area.innerHTML = `
-                    <div class="hero">
-                        <small>Всего средств</small>
-                        <b>${formatCurrency(total)}</b>
-                    </div>
-                    <div>
-                        ${S.accounts.map(acc => `
-                            <div class="card-row">
-                                <div style="display:flex; align-items:center;">
-                                    <div class="icon-cell">${acc.icon}</div>
-                                    <strong>${acc.name}</strong>
-                                </div>
-                                <div class="${acc.balance >= 0 ? 'income' : 'expense'}">
-                                    ${formatCurrency(acc.balance)}
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
-            } else if (currentTab === 'hist') {
-                if (!S.transactions.length) {
-                    area.innerHTML = `<div class="empty-text">История транзакций пуста</div>`;
-                    return;
-                }
-                area.innerHTML = S.transactions.slice().reverse().map(t => `
-                    <div class="card-row">
-                        <div>
-                            <strong>${t.category || 'Операция'}</strong>
-                            <div style="font-size:12px; color:var(--mut);">${t.date}</div>
-                        </div>
-                        <div class="${t.type === 'income' ? 'income' : 'expense'}">
-                            ${t.type === 'income' ? '+' : '-'}${formatCurrency(t.amount)}
-                        </div>
-                    </div>
-                `).join('');
-            }
-        }
-
-        function openAdd() {
-            const modal = document.getElementById('modal-content');
-            modal.innerHTML = `
-                <h2>Новая операция</h2>
-                <div class="form-group">
-                    <label>Тип</label>
-                    <select id="txn-type">
-                        <option value="expense">Расход</option>
-                        <option value="income">Доход</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Счет</label>
-                    <select id="txn-acc">
-                        ${S.accounts.map(a => `<option value="${a.id}">${a.name}</option>`).join('')}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Категория</label>
-                    <input type="text" id="txn-cat" placeholder="Продукты, Зарплата...">
-                </div>
-                <div class="form-group">
-                    <label>Сумма</label>
-                    <input type="number" id="txn-amount" placeholder="0">
-                </div>
-                <button class="save-button" onclick="saveTransaction()">Сохранить</button>
-            `;
-            document.getElementById('modal-overlay').style.display = 'flex';
-        }
-
-        function closeModal(e) {
-            document.getElementById('modal-overlay').style.display = 'none';
-        }
-
-        function saveTransaction() {
-            const type = document.getElementById('txn-type').value;
-            const accId = document.getElementById('txn-acc').value;
-            const cat = document.getElementById('txn-cat').value || 'Разное';
-            const amount = parseFloat(document.getElementById('txn-amount').value);
-
-            if (!amount || amount <= 0) return alert('Введите корректную сумму');
-
-            const acc = S.accounts.find(a => a.id === accId);
-            if (acc) {
-                if (type === 'income') acc.balance += amount;
-                else acc.balance -= amount;
-            }
-
-            S.transactions.push({
-                id: Date.now().toString(),
-                type,
-                accountId: accId,
-                category: cat,
-                amount,
-                date: new Date().toLocaleDateString('ru-RU')
-            });
-
-            saveData();
-            closeModal();
-            render();
-        }
-
-        // Регистрация Service Worker для PWA
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                    .then(reg => console.log('SW зарегистрирован:', reg.scope))
-                    .catch(err => console.error('Ошибка SW:', err));
-            });
-        }
-
-        setTab('acc');
-    </script>
-</body>
-</html><!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Копилка — учёт финансов</title>
-    <!-- Подключение манифеста PWA -->
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#6c5ce7">
-    <link rel="apple-touch-icon" href="icon-192.png">
-
-    <style>
-        :root {
-            --bg: #f4f5f9;
-            --card: #ffffff;
-            --tx: #1b1d2a;
-            --mut: #7a7f94;
-            --ac: #6c5ce7;
-            --inc: #00a37a;
-            --exp: #e5484d;
-            --ln: #e6e8f0;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --bg: #12131c;
-                --card: #1e202e;
-                --tx: #f4f5f9;
-                --mut: #a0a5ba;
-                --ln: #2d3045;
-            }
-        }
-
-        body {
-            margin: 0;
-            background: var(--bg);
-            color: var(--tx);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            padding-bottom: 90px;
-        }
-
-        .w {
-            max-width: 520px;
-            margin: 0 auto;
-            padding: 16px;
-        }
-
-        h1 {
-            font-size: 24px;
-            margin: 0;
-        }
-
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 14px;
-        }
-
-        select, input, button {
-            font-family: inherit;
-            color: inherit;
-            border: 1px solid var(--ln);
-            border-radius: 8px;
-            padding: 8px;
-            background: var(--card);
-        }
-
-        .hero {
-            background: linear-gradient(135deg, var(--ac), #a29bfe);
-            color: white;
-            border-radius: 20px;
-            padding: 20px;
-            margin-bottom: 14px;
-        }
-
-        .hero small { opacity: .85; display: block; }
-        .hero b { font-size: 28px; }
-
-        .card-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px;
-            background: var(--card);
-            border-radius: 12px;
-            margin-bottom: 8px;
-        }
-
-        .icon-cell {
-            width: 40px;
-            height: 40px;
-            border-radius: 12px;
-            background: var(--bg);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 19px;
-            margin-right: 12px;
-        }
-
-        .income { color: var(--inc); font-weight: bold; }
-        .expense { color: var(--exp); font-weight: bold; }
-
-        nav {
-            position: fixed;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: var(--card);
-            border-top: 1px solid var(--ln);
-            display: flex;
-            justify-content: space-around;
-            padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px));
-            z-index: 5;
-        }
-
-        .tab-button {
-            flex: 1;
-            padding: 10px;
-            background: none;
-            border: none;
-            color: var(--mut);
-            font-size: 14px;
-            cursor: pointer;
-            font-weight: 600;
-        }
-
-        .tab-button.active {
-            color: var(--ac);
-        }
-
-        .fab {
-            position: fixed;
-            right: max(16px, calc(50% - 244px));
-            bottom: calc(74px + env(safe-area-inset-bottom, 0px));
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            background: var(--ac);
-            color: white;
-            font-size: 30px;
-            border: none;
-            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
-            cursor: pointer;
-            z-index: 6;
-        }
-
-        .mod {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.5);
-            display: none;
-            align-items: flex-end;
-            justify-content: center;
-            z-index: 10;
-        }
-
-        .sheet {
-            background: var(--bg);
-            width: 100%;
-            max-width: 520px;
-            border-radius: 22px 22px 0 0;
-            padding: 20px;
-            max-height: 85vh;
-            overflow-y: auto;
-            box-sizing: border-box;
-        }
-
-        .form-group {
-            margin-bottom: 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .save-button {
-            width: 100%;
-            padding: 14px;
-            background-color: var(--ac);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-weight: bold;
-            font-size: 16px;
-            cursor: pointer;
-            margin-top: 12px;
-        }
-
-        .empty-text {
-            text-align: center;
-            margin: 40px 0;
-            color: var(--mut);
-        }
-    </style>
-</head>
-<body>
-    <div class="w">
-        <header>
-            <h1>🐷 Копилка</h1>
-            <select id="cur" onchange="changeCurrency(this.value)">
-                <option value="₸">₸</option>
-                <option value="₽">₽</option>
-                <option value="$">$</option>
-                <option value="€">€</option>
-                <option value="Br">Br</option>
-            </select>
-        </header>
-
-        <div id="display-area"></div>
-    </div>
-
-    <button class="fab" onclick="openAdd()" title="Добавить">+</button>
-
-    <nav>
-        <button class="tab-button" id="tab-acc" onclick="setTab('acc')">Счета</button>
-        <button class="tab-button" id="tab-hist" onclick="setTab('hist')">История</button>
-    </nav>
-
-    <div class="mod" id="modal-overlay" onclick="closeModal(event)">
-        <div class="sheet" id="modal-content" onclick="event.stopPropagation()"></div>
-    </div>
-
-    <script>
-        let currentTab = 'acc';
-
-        let S = {
-            currency: "₸",
-            accounts: [
-                { id: "1", name: "Наличные", balance: 0, icon: "💵" },
-                { id: "2", name: "Карта", balance: 0, icon: "💳" }
-            ],
-            transactions: []
-        };
-
-        // Загрузка данных
-        try {
-            const savedData = localStorage.getItem("coinkeeper-data");
-            if (savedData) S = JSON.parse(savedData);
-        } catch (e) {
-            console.error("Ошибка загрузки:", e);
-        }
-
-        function saveData() {
-            localStorage.setItem("coinkeeper-data", JSON.stringify(S));
-        }
-
-        function formatCurrency(amount) {
-            return new Intl.NumberFormat("ru-RU").format(amount) + " " + S.currency;
-        }
-
-        function changeCurrency(val) {
-            S.currency = val;
-            saveData();
-            render();
-        }
-
-        function setTab(tab) {
-            currentTab = tab;
-            document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
-            document.getElementById(`tab-${tab}`)?.classList.add('active');
-            render();
-        }
-
-        function render() {
-            document.getElementById('cur').value = S.currency;
-            const area = document.getElementById("display-area");
-
-            if (currentTab === 'acc') {
-                const total = S.accounts.reduce((sum, acc) => sum + Number(acc.balance), 0);
-                area.innerHTML = `
-                    <div class="hero">
-                        <small>Всего средств</small>
-                        <b>${formatCurrency(total)}</b>
-                    </div>
-                    <div>
-                        ${S.accounts.map(acc => `
-                            <div class="card-row">
-                                <div style="display:flex; align-items:center;">
-                                    <div class="icon-cell">${acc.icon}</div>
-                                    <strong>${acc.name}</strong>
-                                </div>
-                                <div class="${acc.balance >= 0 ? 'income' : 'expense'}">
-                                    ${formatCurrency(acc.balance)}
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
-            } else if (currentTab === 'hist') {
-                if (!S.transactions.length) {
-                    area.innerHTML = `<div class="empty-text">История транзакций пуста</div>`;
-                    return;
-                }
-                area.innerHTML = S.transactions.slice().reverse().map(t => `
-                    <div class="card-row">
-                        <div>
-                            <strong>${t.category || 'Операция'}</strong>
-                            <div style="font-size:12px; color:var(--mut);">${t.date}</div>
-                        </div>
-                        <div class="${t.type === 'income' ? 'income' : 'expense'}">
-                            ${t.type === 'income' ? '+' : '-'}${formatCurrency(t.amount)}
-                        </div>
-                    </div>
-                `).join('');
-            }
-        }
-
-        function openAdd() {
-            const modal = document.getElementById('modal-content');
-            modal.innerHTML = `
-                <h2>Новая операция</h2>
-                <div class="form-group">
-                    <label>Тип</label>
-                    <select id="txn-type">
-                        <option value="expense">Расход</option>
-                        <option value="income">Доход</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Счет</label>
-                    <select id="txn-acc">
-                        ${S.accounts.map(a => `<option value="${a.id}">${a.name}</option>`).join('')}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Категория</label>
-                    <input type="text" id="txn-cat" placeholder="Продукты, Зарплата...">
-                </div>
-                <div class="form-group">
-                    <label>Сумма</label>
-                    <input type="number" id="txn-amount" placeholder="0">
-                </div>
-                <button class="save-button" onclick="saveTransaction()">Сохранить</button>
-            `;
-            document.getElementById('modal-overlay').style.display = 'flex';
-        }
-
-        function closeModal(e) {
-            document.getElementById('modal-overlay').style.display = 'none';
-        }
-
-        function saveTransaction() {
-            const type = document.getElementById('txn-type').value;
-            const accId = document.getElementById('txn-acc').value;
-            const cat = document.getElementById('txn-cat').value || 'Разное';
-            const amount = parseFloat(document.getElementById('txn-amount').value);
-
-            if (!amount || amount <= 0) return alert('Введите корректную сумму');
-
-            const acc = S.accounts.find(a => a.id === accId);
-            if (acc) {
-                if (type === 'income') acc.balance += amount;
-                else acc.balance -= amount;
-            }
-
-            S.transactions.push({
-                id: Date.now().toString(),
-                type,
-                accountId: accId,
-                category: cat,
-                amount,
-                date: new Date().toLocaleDateString('ru-RU')
-            });
-
-            saveData();
-            closeModal();
-            render();
-        }
-
-        // Регистрация Service Worker для PWA
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                    .then(reg => console.log('SW зарегистрирован:', reg.scope))
-                    .catch(err => console.error('Ошибка SW:', err));
-            });
-        }
-
-        setTab('acc');
-    </script>
-</body>
-</html>
+<html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Копилка — учёт финансов</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f4f5f9;--card:#fff;--tx:#1b1d2a;--mut:#7a7f94;--ac:#6c5ce7;--inc:#00a37a;--exp:#e5484d;--ln:#e6e8f0}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12131a;--card:#1c1e29;--tx:#eceef7;--mut:#8c91a8;--ac:#8b7dff;--inc:#3ddc97;--exp:#ff6b70;--ln:#2a2d3c}}
+:root[data-theme="dark"]{--bg:#12131a;--card:#1c1e29;--tx:#eceef7;--mut:#8c91a8;--ac:#8b7dff;--inc:#3ddc97;--exp:#ff6b70;--ln:#2a2d3c}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding-bottom:90px}
+.w{max-width:520px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:0}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+select,input,button{font:inherit;color:inherit}
+select,input{background:var(--card);border:1px solid var(--ln);border-radius:10px;padding:10px;width:100%}
+.hero{background:linear-gradient(135deg,var(--ac),#a29bfe);color:#fff;border-radius:20px;padding:20px;margin-bottom:14px}
+.hero small{opacity:.85}.hero b{display:block;font-size:30px;margin:2px 0 8px}
+.hero div{display:flex;gap:16px;font-size:13px}
+.card{background:var(--card);border-radius:16px;padding:6px 14px;margin-bottom:12px}
+.row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--ln)}
+.row:last-child{border:0}
+.ic{width:38px;height:38px;border-radius:12px;background:var(--bg);display:grid;place-items:center;font-size:19px;flex:none}
+.g{flex:1;min-width:0}.g span{display:block;color:var(--mut);font-size:12px}
+.inc{color:var(--inc)}.exp{color:var(--exp)}
+.dt{color:var(--mut);font-size:12px;margin:14px 4px 6px;text-transform:uppercase;letter-spacing:.04em}
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--ln);display:flex;justify-content:space-around;padding:6px 0 calc(6px + env(safe-area-inset-bottom,0px))}
+nav button{background:none;border:0;color:var(--mut);padding:6px 14px;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:2px}
+nav button i{font-style:normal;font-size:20px}nav button.on{color:var(--ac);font-weight:600}
+.fab{position:fixed;right:max(16px,calc(50% - 244px));bottom:calc(74px + env(safe-area-inset-bottom,0px));width:56px;height:56px;border-radius:50%;border:0;background:var(--ac);color:#fff;font-size:30px;box-shadow:0 6px 18px #0004}
+.mod{position:fixed;inset:0;background:#0007;display:none;align-items:flex-end;justify-content:center;z-index:9}
+.mod.on{display:flex}
+.sheet{background:var(--bg);width:100%;max-width:520px;border-radius:22px 22px 0 0;padding:18px;max-height:92%;overflow:auto}
+.tabs{display:flex;background:var(--card);border-radius:12px;padding:3px;margin-bottom:12px}
+.tabs button{flex:1;border:0;background:none;padding:9px;border-radius:10px;color:var(--mut)}
+.tabs button.on{background:var(--ac);color:#fff}
+.amt{font-size:30px;font-weight:700;text-align:center;border:0;background:none}
+.cats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0}
+.cats button{background:var(--card);border:2px solid transparent;border-radius:12px;padding:8px 2px;font-size:11px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.cats button.on{border-color:var(--ac)}.cats i{font-style:normal;font-size:20px}
+.f{display:grid;gap:8px;margin-bottom:10px}
+.ok{width:100%;border:0;background:var(--ac);color:#fff;padding:14px;border-radius:14px;font-weight:600}
+.lnk{background:none;border:0;color:var(--ac);padding:8px 0}
+.donut{width:170px;height:170px;border-radius:50%;margin:10px auto;display:grid;place-items:center}
+.donut div{width:104px;height:104px;border-radius:50%;background:var(--bg);display:grid;place-items:center;text-align:center;font-weight:700;font-size:13px}
+.bar{height:6px;border-radius:3px;background:var(--ln);margin-top:5px;overflow:hidden}.bar b{display:block;height:100%}
+.mon{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.mon button{background:var(--card);border:0;border-radius:10px;width:36px;height:36px;font-size:16px}
+.empty{text-align:center;color:var(--mut);padding:30px 0}
+</style></head><body>
+<div class="w">
+ <div class="top"><h1>🐷 Копилка</h1>
+  <select id="cur" style="width:auto"><option>₸</option><option>₽</option><option>$</option><option>€</option><option>Br</option></select></div>
+ <div id="v"></div>
+</div>
+<button class="fab" onclick="openAdd()">+</button>
+<nav id="nav"></nav>
+<div class="mod" id="mod" onclick="if(event.target==this)closeM()"><div class="sheet" id="sh"></div></div>
+
+<script>
+const EXP=[["Продукты","🛒"],["Транспорт","🚌"],["Кафе","☕"],["Дом","🏠"],["Здоровье","💊"],["Одежда","👕"],["Досуг","🎬"],["Прочее","📦"]];
+const INC=[["Зарплата","💼"],["Подработка","💻"],["Подарок","🎁"],["Прочее","💰"]];
+const COL=["#6c5ce7","#00b894","#fdcb6e","#e17055","#0984e3","#e84393","#00cec9","#b2bec3"];
+const NAVS=[["acc","💳","Счета"],["hist","🧾","История"],["stat","📊","Статистика"]];
+let S={cur:"₸",acc:[{id:1,name:"Наличные",ic:"💵",start:0},{id:2,name:"Карта",ic:"💳",start:0}],tx:[]};
+try{const r=localStorage.getItem("kopilka1");if(r)S=JSON.parse(r)}catch(e){}
+let tab="acc",mo=new Date(),f={type:"exp"};
+const $=id=>document.getElementById(id);
+const save=()=>{try{localStorage.setItem("kopilka1",JSON.stringify(S))}catch(e){}};
+const fmt=n=>new Intl.NumberFormat("ru-RU",{maximumFractionDigits:2}).format(n)+" "+S.cur;
+const iso=d=>{d=d||new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
+const catIc=(t,c)=>(t=="inc"?INC:EXP).find(x=>x[0]==c)?.[1]||"🔁";
+const bal=a=>S.tx.reduce((s,t)=>{if(t.type=="inc"&&t.acc==a.id)s+=t.amt;if(t.type=="exp"&&t.acc==a.id)s-=t.amt;if(t.type=="tr"){if(t.acc==a.id)s-=t.amt;if(t.to==a.id)s+=t.amt}return s},a.start);
+const accName=id=>S.acc.find(a=>a.id==id)?.name||"—";
+const mTx=()=>S.tx.filter(t=>t.date.slice(0,7)==iso(mo).slice(0,7));
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function render(){
+ $("cur").value=S.cur;
+ $("nav").innerHTML=NAVS.map(n=>`<button class="${tab==n[0]?"on":""}" onclick="tab='${n[0]}';render()"><i>${n[1]}</i>${n[2]}</button>`).join("");
+ $("v").innerHTML={acc:vAcc,hist:vHist,stat:vStat}[tab]();
+}
+function vAcc(){
+ const tot=S.acc.reduce((s,a)=>s+bal(a),0),m=mTx();
+ const i=m.filter(t=>t.type=="inc").reduce((s,t)=>s+t.amt,0),e=m.filter(t=>t.type=="exp").reduce((s,t)=>s+t.amt,0);
+ return `<div class="hero"><small>Всего средств</small><b>${fmt(tot)}</b><div><span>▲ ${fmt(i)}</span><span>▼ ${fmt(e)}</span><small>в этом месяце</small></div></div>
+ <div class="card">${S.acc.map(a=>`<div class="row"><div class="ic">${a.ic}</div><div class="g">${esc(a.name)}</div><b class="${bal(a)<0?"exp":""}">${fmt(bal(a))}</b></div>`).join("")}</div>
+ <button class="lnk" onclick="addAcc()">+ Добавить счёт</button>`;
+}
+function vHist(){
+ const l=[...S.tx].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);
+ if(!l.length)return `<div class="empty">Операций пока нет.<br>Нажмите «+», чтобы добавить первую.</div>`;
+ let d="",h="";
+ l.forEach(t=>{
+  if(t.date!=d){d=t.date;h+=`<div class="dt">${new Date(d+"T12:00").toLocaleDateString("ru-RU",{day:"numeric",month:"long",weekday:"short"})}</div>`}
+  const sign=t.type=="inc"?"+":t.type=="exp"?"−":"";
+  h+=`<div class="card" style="padding:0 14px;margin-bottom:6px"><div class="row" onclick="delTx(${t.id})"><div class="ic">${catIc(t.type,t.cat)}</div><div class="g">${esc(t.cat||"Перевод")}<span>${t.type=="tr"?accName(t.acc)+" → "+accName(t.to):accName(t.acc)}${t.note?" · "+esc(t.note):""}</span></div><b class="${t.type}">${sign}${fmt(t.amt)}</b></div></div>`});
+ return h+`<div class="empty" style="font-size:12px;padding:10px">Нажмите на операцию, чтобы удалить</div>`;
+}
+function vStat(){
+ const type=f.st||"exp",m=mTx().filter(t=>t.type==type),tot=m.reduce((s,t)=>s+t.amt,0);
+ const by={};m.forEach(t=>by[t.cat]=(by[t.cat]||0)+t.amt);
+ const arr=Object.entries(by).sort((a,b)=>b[1]-a[1]);
+ let p=0;const grad=arr.map((x,i)=>{const s=p;p+=x[1]/tot*100;return `${COL[i%8]} ${s}% ${p}%`}).join(",");
+ return `<div class="mon"><button onclick="mo.setMonth(mo.getMonth()-1);render()">‹</button><b style="text-transform:capitalize">${mo.toLocaleDateString("ru-RU",{month:"long",year:"numeric"})}</b><button onclick="mo.setMonth(mo.getMonth()+1);render()">›</button></div>
+ <div class="tabs"><button class="${type=="exp"?"on":""}" onclick="f.st='exp';render()">Расходы</button><button class="${type=="inc"?"on":""}" onclick="f.st='inc';render()">Доходы</button></div>
+ ${arr.length?`<div class="donut" style="background:conic-gradient(${grad})"><div>${fmt(tot)}</div></div>
+ <div class="card">${arr.map((x,i)=>`<div class="row"><div class="ic">${catIc(type,x[0])}</div><div class="g">${x[0]} <span>${Math.round(x[1]/tot*100)}%</span><div class="bar"><b style="width:${x[1]/tot*100}%;background:${COL[i%8]}"></b></div></div><b>${fmt(x[1])}</b></div>`).join("")}</div>`:`<div class="empty">Нет данных за этот месяц</div>`}`;
+}
+function openAdd(){f={type:"exp",cat:"Продукты",acc:S.acc[0].id,to:S.acc[1]?.id||S.acc[0].id,date:iso(),st:f.st};drawAdd();$("mod").classList.add("on")}
+function closeM(){$("mod").classList.remove("on")}
+function drawAdd(){
+ const cats=f.type=="inc"?INC:EXP,opt=(v)=>S.acc.map(a=>`<option value="${a.id}" ${a.id==v?"selected":""}>${esc(a.ic+" "+a.name)}</option>`).join("");
+ const keep=$("am")?.value||"",note=$("nt")?.value||"";
+ $("sh").innerHTML=`<div class="tabs">${[["exp","Расход"],["inc","Доход"],["tr","Перевод"]].map(t=>`<button class="${f.type==t[0]?"on":""}" onclick="syncF();f.type='${t[0]}';f.cat=${t[0]=="inc"?"'Зарплата'":"'Продукты'"};drawAdd()">${t[1]}</button>`).join("")}</div>
+ <input class="amt" id="am" type="number" inputmode="decimal" placeholder="0" value="${keep}">
+ ${f.type!="tr"?`<div class="cats">${cats.map(c=>`<button class="${f.cat==c[0]?"on":""}" onclick="syncF();f.cat='${c[0]}';drawAdd()"><i>${c[1]}</i>${c[0]}</button>`).join("")}</div>`:""}
+ <div class="f"><select id="ac">${opt(f.acc)}</select>${f.type=="tr"?`<select id="to">${opt(f.to)}</select>`:""}
+ <input id="dt" type="date" value="${f.date}"><input id="nt" placeholder="Заметка" value="${esc(note)}"></div>
+ <button class="ok" onclick="saveTx()">Сохранить</button>`;
+}
+function syncF(){f.acc=+$("ac").value;if($("to"))f.to=+$("to").value;f.date=$("dt").value}
+function saveTx(){
+ syncF();const amt=parseFloat($("am").value);
+ if(!(amt>0)){$("am").focus();return}
+ if(f.type=="tr"&&f.acc==f.to){alert("Выберите разные счета");return}
+ S.tx.push({id:Date.now(),type:f.type,amt,acc:f.acc,to:f.type=="tr"?f.to:null,cat:f.type=="tr"?null:f.cat,note:$("nt").value.trim(),date:f.date||iso()});
+ save();closeM();render();
+}
+function delTx(id){if(confirm("Удалить операцию?")){S.tx=S.tx.filter(t=>t.id!=id);save();render()}}
+function addAcc(){
+ const n=prompt("Название счёта");if(!n)return;
+ const s=parseFloat(prompt("Начальный баланс","0"))||0;
+ S.acc.push({id:Date.now(),name:n.trim(),ic:"👛",start:s});save();render();
+}
+$("cur").onchange=e=>{S.cur=e.target.value;save();render()};
+render();
+</script></body></html>
